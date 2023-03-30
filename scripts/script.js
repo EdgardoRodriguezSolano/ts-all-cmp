@@ -1,10 +1,10 @@
 var textArea = document.getElementsByTagName('textarea')[0];
 
 function setCheckedStatus(el) {
-  if(el.checked) {
+  if (el.checked) {
     el.closest('.toggle_container').setAttribute('data-checked', 'true')
   }
-  else{
+  else {
     el.closest('.toggle_container').setAttribute('data-checked', 'false')
   }
 }
@@ -21,7 +21,7 @@ Array.from(document.querySelectorAll('input')).forEach(input => {
 })
 
 textArea.addEventListener('keyup', () => {
-  updateUrl();
+  window.sessionStorage.setItem('didomi-config', JSON.stringify(getConfig(textArea.value.replace(/\s\s+/g, ' ')).json));
 })
 
 
@@ -37,14 +37,8 @@ function updateUrl() {
     return el.getAttribute('data-qp') + '=' + (el.checked ? '1' : '0');
   }).join('&');
 
-  if(isJSONvalid(textArea.value)) {
-    var jsonStr = textArea.value;
-    jsonStr = jsonStr.replace(/\s\s+/g, ' ');
-    params += '&config=' + btoa(jsonStr);
-  }
-
   var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?' + params;
-  window.history.pushState({path:newurl},'',newurl);
+  window.history.pushState({ path: newurl }, '', newurl);
 
 }
 
@@ -58,10 +52,6 @@ function updateInputs() {
     input.checked = (parseInt(new URL(document.location.href).searchParams.get(input.getAttribute('data-qp'))) ? true : false);
   })
 
-  if(new URL(document.location.href).searchParams.get('config')) {
-    textArea.value = atob(new URL(document.location.href).searchParams.get('config'));
-    prettyPrint();
-  }
 
 }
 
@@ -71,51 +61,55 @@ function makeNotice() {
   var global = (parseInt(new URL(document.location.href).searchParams.get('global')) ? true : false);
   var staging = (parseInt(new URL(document.location.href).searchParams.get('staging')) ? true : false);
 
-  writeSDK(apikey, noticeid, global, staging)
 
+  writeSDK(apikey, noticeid, global, staging)
 }
 
 /* Custom JSON */
 
 function prettyPrint() {
-    var ugly = textArea.value;
-    var obj = JSON.parse(ugly);
-    var pretty = JSON.stringify(obj, undefined, 2);
-    textArea.value = pretty;
+  var ugly = textArea.value;
+  var obj = JSON.parse(ugly);
+  var pretty = JSON.stringify(obj, undefined, 2);
+  textArea.value = pretty;
 }
 
-
-function isJSONvalid(text) {
+function getConfig(text) {
   try {
     JSON.parse(text);
   } catch (e) {
-    return false;
+    console.error("Specify a valid JSON value for didomiConfig, error:", e, "received string", { text });
+    return { success: false, json: {} };
   }
-  return true;
+  return { success: true, json: JSON.parse(text) };
 }
 
-textArea.addEventListener('keyup', function() {
-  if(!isJSONvalid(this.value)){
+textArea.addEventListener('keyup', function () {
+  if (!getConfig(this.value).success) {
     this.setAttribute('class', 'invalid')
   }
-  else{
+  else {
     this.setAttribute('class', '')
   }
 })
 
 
-window.onload = function() {
-  if(new URL(document.location.href).searchParams.get('apiKey') && new URL(document.location.href).searchParams.get('notice_id')) {
+window.onload = function () {
+  // Check if a didomiConfig exists in the session storage
+  textArea.value = window.sessionStorage.getItem('didomi-config') || '{}';
+  prettyPrint();
+
+  if (new URL(document.location.href).searchParams.get('apiKey') && new URL(document.location.href).searchParams.get('notice_id')) {
     updateInputs()
     makeNotice()
   }
 
 
-  if(new URL(document.location.href).searchParams.get('config') && parseInt(new URL(document.location.href).searchParams.get('apply_conf'))) {
-    window.didomiConfig = JSON.parse(atob(new URL(document.location.href).searchParams.get('config')));
+  if (!parseInt(new URL(document.location.href).searchParams.get('apply_conf'))) {
+    window.sessionStorage.setItem('didomi-config', {});
   }
 
-  Array.from(document.querySelectorAll('[type="checkbox"][data-qp]')).forEach(function(el) {
+  Array.from(document.querySelectorAll('[type="checkbox"][data-qp]')).forEach(function (el) {
     setCheckedStatus(el)
   })
 }

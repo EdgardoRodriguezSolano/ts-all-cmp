@@ -2,6 +2,7 @@
 function writeSDK(apikey, noticeid, global, staging) {
   var _staging = staging ? 'staging.' : '';
   window.gdprAppliesGlobally = global;
+  window.didomiConfig = JSON.parse(window.sessionStorage.getItem('didomi-config'));
   (function() {
     function r() {
       if (!window.frames.__cmpLocator) {
